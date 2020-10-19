@@ -35,15 +35,31 @@ class OneDrive extends Provider {
    * @param {function} done
    */
   list ({ directory, query, token }, done) {
-    const path = directory ? `items/${directory}` : 'root'
-    const rootPath = query.driveId ? `/drives/${query.driveId}` : '/me/drive'
-    const qs = { $expand: 'thumbnails' }
+    let path
+    const qs = {}
+    if (!query.driveId) {
+      path = '/me/drives'
+    } else if (query.driveId === '_listsites_') {
+      path = '/sites?search='
+    } else {
+      path = `/drives/${query.driveId}/`
+      if (!!directory && directory !== 'root') {
+        path += `items/${directory}`
+      } else {
+        path += 'root'
+      }
+      path += '/children'
+      qs.$expand = 'thumbnails'
+    }
+
     if (query.cursor) {
       qs.$skiptoken = query.cursor
     }
 
+    console.log('path: ' + path)
+
     this.client
-      .get(`${rootPath}/${path}/children`)
+      .get(path)
       .qs(qs)
       .auth(token)
       .request((err, resp, body) => {
@@ -58,7 +74,12 @@ class OneDrive extends Provider {
               logger.error(err, 'provider.onedrive.user.error')
               return done(err)
             }
-            done(null, this.adaptData(body, infoResp.body.mail || infoResp.body.userPrincipalName))
+            console.log('body: ' + JSON.stringify(body))
+            if (query.driveId === '_listsites_') {
+              this.adaptSharepointSitesData(body, infoResp.body.mail || infoResp.body.userPrincipalName, token, done)
+            } else {
+              done(null, this.adaptData(body, infoResp.body.mail || infoResp.body.userPrincipalName, !query.driveId))
+            }
           })
         }
       })
@@ -112,7 +133,7 @@ class OneDrive extends Provider {
     done(null, { revoked: false, manual_revoke_url: 'https://account.live.com/consent/Manage' })
   }
 
-  adaptData (res, username) {
+  adaptData (res, username, includeRemoteFolder) {
     const data = { username, items: [] }
     const items = adapter.getItemSubList(res)
     items.forEach((item) => {
@@ -129,9 +150,52 @@ class OneDrive extends Provider {
       })
     })
 
+    if (includeRemoteFolder) {
+      // Add a pseudo-folder for listing sharepoint sites
+      data.items.push({
+        isFolder: true,
+        icon: 'folder',
+        name: 'Other Remote Drives',
+        id: 'root',
+        requestPath: 'root?driveId=_listsites_'
+      })
+    }
+
     data.nextPagePath = adapter.getNextPagePath(res)
 
     return data
+  }
+
+  adaptSharepointSitesData (res, username, token, done) {
+    const items = adapter.getItemSubList(res)
+    let loadedSites = 0
+    const data = { username, items: [] }
+    items.forEach((item) => {
+      const siteName = item.displayName
+      this.client
+        .get('sites/' + item.id + '/drives')
+        .auth(token)
+        .request((err, resp, body) => {
+          if (err || resp.statusCode !== 200) {
+            err = this._error(err, resp)
+            logger.error(err, 'provider.onedrive.list.error')
+            return done(err)
+          } else {
+            console.log('body: ' + JSON.stringify(body))
+            const siteDrives = this.adaptData(body).items
+            siteDrives.forEach((item) => {
+              item.name = siteName + ' ' + item.name
+            })
+            loadedSites++
+            data.items.push(siteDrives)
+
+            if (loadedSites === items.length) {
+              data.nextPagePath = adapter.getNextPagePath(res)
+              done(null, data)
+            }
+          }
+        })
+    })
   }
 
   _error (err, resp) {

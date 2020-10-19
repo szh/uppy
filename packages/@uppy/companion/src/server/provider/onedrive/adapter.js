@@ -2,10 +2,18 @@ const querystring = require('querystring')
 
 exports.isFolder = (item) => {
   if (item.remoteItem) {
-    return !!item.remoteItem.folder
+    return !!item.remoteItem.folder || exports.isDrive(item)
   }
 
-  return !!item.folder
+  return !!item.folder || exports.isDrive(item)
+}
+
+exports.isDrive = (item) => {
+  if (item.remoteItem) {
+    return !!item.remoteItem.driveType
+  }
+
+  return !!item.driveType
 }
 
 exports.getItemSize = (item) => {
@@ -36,6 +44,10 @@ exports.getItemId = (item) => {
 }
 
 exports.getItemRequestPath = (item) => {
+  if (exports.isDrive(item)) {
+    return `root?driveId=${exports.getItemId(item)}`
+  }
+
   let query = `?driveId=${item.parentReference.driveId}`
   if (item.remoteItem) {
     query = `?driveId=${item.remoteItem.parentReference.driveId}`
@@ -48,7 +60,7 @@ exports.getItemModifiedDate = (item) => {
 }
 
 exports.getItemThumbnailUrl = (item) => {
-  return item.thumbnails[0] ? item.thumbnails[0].medium.url : null
+  return item.thumbnails && item.thumbnails[0] ? item.thumbnails[0].medium.url : null
 }
 
 exports.getNextPagePath = (data) => {
