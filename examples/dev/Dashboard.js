@@ -5,6 +5,7 @@ const Facebook = require('@uppy/facebook/src')
 const OneDrive = require('@uppy/onedrive/src')
 const Dropbox = require('@uppy/dropbox/src')
 const GoogleDrive = require('@uppy/google-drive/src')
+const Unsplash = require('@uppy/unsplash/src')
 const Zoom = require('@uppy/zoom/src')
 const Url = require('@uppy/url/src')
 const Webcam = require('@uppy/webcam/src')
@@ -30,7 +31,7 @@ const UPLOADER = 'tus'
 
 const COMPANION_URL = 'http://localhost:3020'
 const TUS_ENDPOINT = 'https://master.tus.io/files/'
-const XHR_ENDPOINT = 'https://upload-endpoint.uppy.io/upload'
+const XHR_ENDPOINT = 'https://xhr-server.herokuapp.com/upload'
 
 // DEV CONFIG: Transloadit keys
 
@@ -70,7 +71,12 @@ module.exports = () => {
     .use(OneDrive, { target: Dashboard, companionUrl: COMPANION_URL })
     .use(Zoom, { target: Dashboard, companionUrl: COMPANION_URL })
     .use(Url, { target: Dashboard, companionUrl: COMPANION_URL })
-    .use(Webcam, { target: Dashboard })
+    .use(Unsplash, { target: Dashboard, companionUrl: COMPANION_URL })
+    .use(Webcam, {
+      target: Dashboard,
+      showVideoSourceDropdown: true,
+      showRecordingLength: true
+    })
     .use(ScreenCapture, { target: Dashboard })
     .use(Form, { target: '#upload-form' })
     .use(ImageEditor, { target: Dashboard })
