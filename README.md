@@ -1,3 +1,6 @@
+# This is a fork of https://github.com/transloadit/uppy. It adds the feature in https://github.com/transloadit/uppy/pull/2556
+
+
 # [Uppy](https://uppy.io)
 
 <img src="https://uppy.io/images/logos/uppy-logo-2019.svg" width="120" alt="Uppy logo: a superman puppy in a pink suit" align="right">
